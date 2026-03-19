@@ -1,0 +1,5 @@
+/* Slink Cyberpunk Theme */
+.neon-text { text-shadow: 0 0 10px #00f2ff; }
+.glass { background: rgba(10, 10, 20, 0.6); backdrop-filter: blur(8px); }
+input { background: #0a0a10; border: 1px solid #1a1a2a; color: #0ff; }
+input:focus { outline: none; border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff; }

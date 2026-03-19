@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html class="dark">
+<head>
+    <title>SLINK // AUTH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #020205; color: #00f2ff; font-family: 'Courier New', monospace; }
+        .neon-border { border: 1px solid #00f2ff; box-shadow: 0 0 15px #00f2ff; }
+        input { background: #0a0a10; border: 1px solid #1a1a2a; color: #0ff; }
+        input:focus { outline: none; border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="neon-border p-10 w-96 glass bg-black/50 backdrop-blur-md">
+        <h1 class="text-3xl font-black mb-8 italic tracking-widest text-center uppercase">Admin_Auth</h1>
+        {% if error %}<p class="text-red-500 text-xs mb-4 text-center">ACCESS_DENIED</p>{% endif %}
+        <form method="POST">
+            <input type="text" name="username" placeholder="IDENTIFIER" class="w-full p-3 mb-4 text-sm" required>
+            <input type="password" name="password" placeholder="SECURITY_KEY" class="w-full p-3 mb-6 text-sm" required>
+            <button type="submit" class="w-full bg-cyan-500 hover:bg-white text-black font-bold py-3 transition-all">INITIATE_SESSION</button>
+        </form>
+    </div>
+</body>
+</html>

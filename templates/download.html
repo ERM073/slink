@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLINK // {{ share.filename }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #020205; color: #0ff; font-family: 'Courier New', monospace; }
+        .main-box { border: 1px solid #0ff; box-shadow: 0 0 30px rgba(0,255,255,0.2); background: rgba(0,0,0,0.8); }
+        .preview-win { background: #000; border: 1px solid #1a1a2a; color: #0c0; font-size: 11px; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6">
+    <div class="main-box max-w-xl w-full p-10">
+        <h1 class="text-3xl font-black mb-6 italic tracking-tighter border-b border-cyan-900 pb-4">INCOMING_ASSET</h1>
+        <div class="space-y-4 mb-10 text-xs">
+            <div class="flex justify-between"><span>FILENAME:</span> <span>{{ share.filename }}</span></div>
+            {% if is_image %}
+            <div class="preview-win p-4 flex justify-center">
+                <img src="/api/dl/{{ share.hash }}/{{ share.token }}" class="max-h-64 object-contain" alt="Preview">
+            </div>
+            {% elif preview %}
+            <div class="preview-win p-4 overflow-auto max-h-48 whitespace-pre-wrap">{{ preview }}</div>
+            {% endif %}
+        </div>
+        <a href="/api/dl/{{ share.hash }}/{{ share.token }}" class="block w-full bg-cyan-500 hover:bg-white text-black font-black py-4 text-center transition-all">EXECUTE_TRANSFER</a>
+    </div>
+</body>
+</html>
