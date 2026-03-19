@@ -5,7 +5,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Share+Tech+Mono&display=swap');
-        body { background: #02040a; color: #00d2ff; font-family: 'Inter', sans-serif; }
+        body { background: #02040a; color: #00d2ff; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; }
         .mono { font-family: 'Share Tech Mono', monospace; }
         .glass { background: rgba(10, 20, 40, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(0, 210, 255, 0.1); }
         .neon-glow { text-shadow: 0 0 10px rgba(0, 210, 255, 0.5); }
@@ -35,8 +35,9 @@
                 <span class="opacity-50">03</span> SYS_SETTINGS
             </button>
         </nav>
-        <div class="p-6 border-t border-white/5 text-[9px] opacity-30 text-center uppercase tracking-widest">
-            NODE_STATE: <span class="text-green-500">OPTIMAL</span>
+        <div class="p-6">
+            <input type="file" id="upload-input" class="hidden" onchange="handleUpload(this)">
+            <button onclick="document.getElementById('upload-input').click()" class="w-full bg-cyan-500 text-black py-2 font-bold text-[10px] tracking-widest hover:bg-white transition-all">UPLOAD_NEW_ASSET</button>
         </div>
     </aside>
 
@@ -63,8 +64,9 @@
                             <td class="max-w-xs truncate">{{ s.filename }}</td>
                             <td>{{ s.downloads }} / {{ s.max_downloads or '∞' }}</td>
                             <td class="opacity-40">{{ s.expires|datetime if s.expires else 'PERMANENT' }}</td>
-                            <td class="text-right px-8">
-                                <button onclick="apiReq('toggle', {token:'{{ s.token }}'})" class="btn-action btn-cyan mr-2 uppercase">{{ 'Disable' if s.enabled else 'Enable' }}</button>
+                            <td class="text-right px-8 space-x-2">
+                                <button onclick="copyToClipboard('http://' + window.location.hostname + ':5119/share/{{ s.hash }}/{{ s.token }}')" class="btn-action border-white/20 text-white/40 hover:text-white uppercase">Copy_URL</button>
+                                <button onclick="apiReq('toggle', {token:'{{ s.token }}'})" class="btn-action btn-cyan uppercase">{{ 'Disable' if s.enabled else 'Enable' }}</button>
                                 <button onclick="apiReq('delete_token', {token:'{{ s.token }}'})" class="btn-action btn-pink uppercase">Revoke</button>
                             </td>
                         </tr>
@@ -81,19 +83,23 @@
                 <table class="w-full text-left text-sm">
                     <thead class="bg-white/5 text-[10px] uppercase font-bold opacity-50">
                         <tr>
-                            <th class="px-8 py-4">SHA-256_Hash</th>
+                            <th class="px-8 py-4">SHA-256_Hash_Node</th>
                             <th>Representative_Name</th>
                             <th>Storage_Footprint</th>
                             <th class="text-right px-8">Operations</th>
                         </tr>
                     </thead>
                     <tbody class="mono text-xs">
+                        {% if not files %}
+                        <tr><td colspan="4" class="px-8 py-12 text-center opacity-30 italic">NO_DATA_NODES_FOUND</td></tr>
+                        {% endif %}
                         {% for f in files %}
                         <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
                             <td class="px-8 py-5 text-cyan-500">{{ f.hash[:16] }}...</td>
                             <td class="max-w-xs truncate">{{ f.filename }}</td>
                             <td>{{ f.size|filesize }}</td>
                             <td class="text-right px-8">
+                                <button onclick="apiReq('share_existing', {hash:'{{ f.hash }}'})" class="btn-action border-white/20 text-white hover:border-cyan-500 mr-2 uppercase">Create_Link</button>
                                 <a href="/api/admin/dl/{{ secret }}/{{ f.hash }}" class="btn-action btn-cyan mr-2 uppercase inline-block">Extract</a>
                                 <button onclick="apiReq('delete_file', {hash:'{{ f.hash }}'})" class="btn-action btn-pink uppercase">Purge</button>
                             </td>
@@ -125,6 +131,7 @@
                         </div>
                     </div>
                     <button onclick="saveSettings()" class="w-full bg-cyan-500 text-black font-bold py-3 text-xs uppercase cursor-pointer hover:bg-white transition-all">Update_Core_Config</button>
+                    <p class="text-[9px] opacity-40 mt-4">CAUTION: CHANGING THE SECRET PATH WILL REQUIRE RE-LOGIN AT THE NEW URL.</p>
                 </div>
             </div>
         </div>
@@ -142,11 +149,19 @@
 
         async function apiReq(action, data) {
             if(action.includes('delete') && !confirm('CONFIRM_DESTRUCTIVE_ACTION?')) return;
-            await fetch(`/api/admin/${secret}/${action}`, {
+            const r = await fetch(`/api/admin/${secret}/${action}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
             });
+            location.reload();
+        }
+
+        async function handleUpload(input) {
+            if(!input.files[0]) return;
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            await fetch(`/api/admin/upload/${secret}`, {method: 'POST', body: formData});
             location.reload();
         }
 
@@ -163,6 +178,10 @@
             });
             const res = await r.json();
             if(res.status === 'ok') window.location.href = res.new_url;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
         }
     </script>
 </body>

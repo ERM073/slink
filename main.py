@@ -14,9 +14,10 @@ from flask import Flask, request, send_from_directory, render_template, abort, j
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Configuration
-STORAGE_DIR = './storage'
-DATA_DIR = './data'
+# --- Absolute Path Configuration ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STORAGE_DIR = os.path.join(BASE_DIR, 'storage')
+DATA_DIR = os.path.join(BASE_DIR, 'data')
 SHARES_FILE = os.path.join(DATA_DIR, 'shares.json')
 CONFIG_FILE = os.path.join(DATA_DIR, 'config.json')
 
@@ -44,9 +45,7 @@ def check_admin_auth(f):
         config = load_json(CONFIG_FILE, {})
         session_token = request.cookies.get('slink_session')
         if session_token != config.get('admin_secret'):
-            # Allow initial login via secret path
-            if kwargs.get('secret') == config.get('admin_secret'):
-                return f(*args, **kwargs)
+            if kwargs.get('secret') == config.get('admin_secret'): return f(*args, **kwargs)
             abort(404)
         return f(*args, **kwargs)
     return decorated
@@ -108,11 +107,11 @@ def upload_api():
     token = secrets.token_hex(4)
     shares = load_json(SHARES_FILE)
     days = request.form.get('days')
-    expiry = time.time() + (int(days) * 86400) if days and int(days) > 0 else None
+    expiry = time.time() + (int(days) * 86400) if days and (days.isdigit() and int(days) > 0) else None
     
     shares.append({
         "hash": fhash, "token": token, "filename": secure_filename(file.filename),
-        "downloads": 0, "max_downloads": int(request.form.get('max', 0)),
+        "downloads": 0, "max_downloads": int(request.form.get('max', 0) or 0),
         "expires": expiry, "enabled": True, "password": request.form.get('password', ''),
         "ip_limit": request.form.get('ip', '')
     })
@@ -125,25 +124,19 @@ def upload_api():
 def admin_login(secret):
     config = load_json(CONFIG_FILE, {})
     if secret != config.get('admin_secret'): abort(404)
-    
     ip = request.remote_addr
-    if is_ip_blocked(ip): return "Temporarily blocked due to security violations.", 429
-
+    if is_ip_blocked(ip): return "BLOCKED", 429
     if request.method == 'POST':
-        user = request.form.get('username')
-        pw = request.form.get('password')
+        user, pw = request.form.get('username'), request.form.get('password')
         if user == config.get('admin_username') and check_password_hash(config.get('admin_password'), pw):
-            login_attempts.pop(ip, None)
             resp = make_response(redirect(url_for('admin_dashboard', secret=secret)))
             resp.set_cookie('slink_session', secret, httponly=True, samesite='Strict')
             return resp
         else:
             cnt, _ = login_attempts.get(ip, [0, 0])
-            cnt += 1
-            login_attempts[ip] = [cnt, time.time()]
+            cnt += 1; login_attempts[ip] = [cnt, time.time()]
             if cnt >= 5: blocked_ips[ip] = time.time() + 3600
-            return render_template('login.html', secret=secret, error="AUTHENTICATION_FAILED")
-
+            return render_template('login.html', secret=secret, error="AUTH_FAIL")
     return render_template('login.html', secret=secret)
 
 @admin_app.route('/slink/<secret>/dashboard')
@@ -151,12 +144,13 @@ def admin_login(secret):
 def admin_dashboard(secret):
     shares = load_json(SHARES_FILE)
     files = []
-    for fhash in os.listdir(STORAGE_DIR):
-        fpath = os.path.join(STORAGE_DIR, fhash)
-        if os.path.isfile(fpath):
-            filename = next((s['filename'] for s in shares if s['hash'] == fhash), fhash)
-            stats = os.stat(fpath)
-            files.append({"hash": fhash, "filename": filename, "size": stats.st_size, "created": stats.st_mtime})
+    if os.path.exists(STORAGE_DIR):
+        for fhash in os.listdir(STORAGE_DIR):
+            fpath = os.path.join(STORAGE_DIR, fhash)
+            if os.path.isfile(fpath):
+                filename = next((s['filename'] for s in shares if s['hash'] == fhash), fhash)
+                stats = os.stat(fpath)
+                files.append({"hash": fhash, "filename": filename, "size": stats.st_size, "created": stats.st_mtime})
     config = load_json(CONFIG_FILE, {})
     return render_template('dashboard.html', shares=shares, files=files, secret=secret, config=config)
 
@@ -171,23 +165,26 @@ def admin_api(secret, action):
             if s['token'] == token: s['enabled'] = not s['enabled']
         save_json(SHARES_FILE, shares)
     elif action == 'delete_token':
-        token = request.json.get('token')
-        save_json(SHARES_FILE, [s for s in load_json(SHARES_FILE) if s['token'] != token])
+        save_json(SHARES_FILE, [s for s in load_json(SHARES_FILE) if s['token'] != request.json.get('token')])
     elif action == 'delete_file':
         fhash = request.json.get('hash')
         fpath = os.path.join(STORAGE_DIR, os.path.basename(fhash))
         if os.path.exists(fpath): os.remove(fpath)
         save_json(SHARES_FILE, [s for s in load_json(SHARES_FILE) if s['hash'] != fhash])
+    elif action == 'share_existing':
+        fhash = request.json.get('hash')
+        shares = load_json(SHARES_FILE)
+        filename = next((s['filename'] for s in shares if s['hash'] == fhash), fhash)
+        token = secrets.token_hex(4)
+        shares.append({"hash": fhash, "token": token, "filename": filename, "downloads": 0, "max_downloads": 0, "expires": None, "enabled": True})
+        save_json(SHARES_FILE, shares)
     elif action == 'update_settings':
-        new_user = request.json.get('username')
-        new_pass = request.json.get('password')
-        new_secret = request.json.get('secret_path')
-        if new_user: config['admin_username'] = new_user
-        if new_pass: config['admin_password'] = generate_password_hash(new_pass)
-        if new_secret and len(new_secret) >= 4: config['admin_secret'] = "".join([c for c in new_secret if c.isalnum()])
+        u, p, s = request.json.get('username'), request.json.get('password'), request.json.get('secret_path')
+        if u: config['admin_username'] = u
+        if p: config['admin_password'] = generate_password_hash(p)
+        if s and len(s) >= 4: config['admin_secret'] = "".join([c for c in s if c.isalnum()])
         save_json(CONFIG_FILE, config)
         return jsonify({"status": "ok", "new_url": f"/slink/{config['admin_secret']}/dashboard"})
-    
     return jsonify({"status": "ok"})
 
 @admin_app.route('/api/admin/dl/<secret>/<fhash>')
@@ -196,7 +193,21 @@ def admin_download(secret, fhash):
     filename = next((s['filename'] for s in load_json(SHARES_FILE) if s['hash'] == fhash), fhash)
     return send_from_directory(STORAGE_DIR, os.path.basename(fhash), as_attachment=True, download_name=filename)
 
-# --- Common Utilities ---
+@admin_app.route('/api/admin/upload/<secret>', methods=['POST'])
+@check_admin_auth
+def admin_upload(secret):
+    file = request.files.get('file')
+    if not file: return jsonify({"error": "No file"}), 400
+    content = file.read()
+    fhash = hashlib.sha256(content).hexdigest()
+    with open(os.path.join(STORAGE_DIR, fhash), 'wb') as f: f.write(content)
+    # Also create a default share link for it
+    token = secrets.token_hex(4)
+    shares = load_json(SHARES_FILE)
+    shares.append({"hash": fhash, "token": token, "filename": secure_filename(file.filename), "downloads": 0, "max_downloads": 0, "expires": None, "enabled": True})
+    save_json(SHARES_FILE, shares)
+    return jsonify({"status": "ok"})
+
 @share_app.template_filter('datetime')
 @admin_app.template_filter('datetime')
 def format_dt(v): return datetime.fromtimestamp(v).strftime('%Y-%m-%d %H:%M')
@@ -212,47 +223,18 @@ def run_share(): share_app.run(port=5119, host='0.0.0.0', debug=False)
 def run_admin(): admin_app.run(port=5120, host='0.0.0.0', debug=False)
 
 def run_cli():
-    parser = argparse.ArgumentParser(description='SLINK CLI')
-    parser.add_argument('file', help='Path to file to upload')
-    parser.add_argument('--max', type=int, default=0, help='Max downloads')
-    parser.add_argument('--days', type=int, default=0, help='Expiration in days')
-    parser.add_argument('--password', help='Share password')
-    parser.add_argument('--ip', help='IP restriction')
-    parser.add_argument('--qr', action='store_true', help='Show ASCII QR code')
-    args = parser.parse_args()
-
-    if not os.path.exists(args.file):
-        print(f"ERROR: File '{args.file}' not found.")
-        sys.exit(1)
-
-    print(f"[+] UPLOADING: {args.file}...")
+    p = argparse.ArgumentParser()
+    p.add_argument('file'); p.add_argument('--max', type=int, default=0); p.add_argument('--days', type=int, default=0); p.add_argument('--password'); p.add_argument('--ip'); p.add_argument('--qr', action='store_true')
+    args = p.parse_args()
+    if not os.path.exists(args.file): (print(f"ERR: {args.file} MISSING"), sys.exit(1))
     try:
-        data = {'max': args.max, 'days': args.days, 'password': args.password or '', 'ip': args.ip or ''}
         with open(args.file, 'rb') as f:
-            r = requests.post('http://localhost:5119/api/upload', files={'file': f}, data=data)
-        
-        res = r.json()
-        print(f"------------------------------------")
-        print(f" SUCCESS: {res['url']}")
-        print(f"------------------------------------")
-        
-        if args.qr:
-            import pyqrcode
-            qr = pyqrcode.create(res['url'])
-            print(qr.terminal(quiet_zone=1))
-    except Exception as e:
-        print(f"ERROR: Could not connect to slink server.\n{e}")
+            res = requests.post('http://localhost:5119/api/upload', files={'file': f}, data={'max': args.max, 'days': args.days, 'password': args.password or '', 'ip': args.ip or ''}).json()
+        print(f"SUCCESS: {res['url']}")
+    except Exception as e: print(f"ERR: {e}")
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and sys.argv[1] != 'serve':
-        run_cli()
+    if len(sys.argv) > 1 and sys.argv[1] != 'serve': run_cli()
     else:
-        print("// SLINK NODE BOOTING...")
-        print("SHARE SERVER: http://0.0.0.0:5119")
-        print("ADMIN SERVER: http://0.0.0.0:5120")
-        t1 = threading.Thread(target=run_share)
-        t2 = threading.Thread(target=run_admin)
-        t1.start()
-        t2.start()
-        t1.join()
-        t2.join()
+        threading.Thread(target=run_share, daemon=True).start()
+        run_admin()
