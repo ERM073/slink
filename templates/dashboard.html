@@ -1,60 +1,71 @@
 <!DOCTYPE html>
 <html class="dark">
 <head>
-    <title>SLINK // DASHBOARD</title>
+    <title>SLINK // CORE_DASHBOARD</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-        body { background: #050508; color: #0cf; font-family: 'Share Tech Mono', monospace; }
-        .glass { background: rgba(10, 10, 20, 0.6); backdrop-filter: blur(8px); }
-        .neon-text { text-shadow: 0 0 10px #00f2ff; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-        .tab-btn { border-bottom: 2px solid transparent; }
-        .tab-btn.active { border-bottom: 2px solid #00f2ff; color: #fff; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Share+Tech+Mono&display=swap');
+        body { background: #02040a; color: #00d2ff; font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'Share Tech Mono', monospace; }
+        .glass { background: rgba(10, 20, 40, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(0, 210, 255, 0.1); }
+        .neon-glow { text-shadow: 0 0 10px rgba(0, 210, 255, 0.5); }
+        .sidebar-item { border-left: 3px solid transparent; transition: 0.2s; }
+        .sidebar-item.active { border-left: 3px solid #ff00ff; background: rgba(255, 0, 255, 0.05); color: #fff; }
+        .btn-action { @apply px-3 py-1 text-[10px] font-bold tracking-widest border transition-all; }
+        .btn-cyan { @apply border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-black; }
+        .btn-pink { @apply border-pink-500 text-pink-500 hover:bg-pink-500 hover:text-black; }
+        .input-dark { @apply bg-black/40 border border-white/10 p-2 text-sm focus:outline-none focus:border-cyan-500; }
     </style>
 </head>
-<body class="p-8">
-    <div class="max-w-7xl mx-auto">
-        <header class="flex justify-between items-center mb-12 border-b border-cyan-900 pb-4">
-            <div class="flex items-center gap-4">
-                <span class="text-4xl font-black italic tracking-tighter neon-text">SLINK_CORE</span>
-                <span class="bg-cyan-900/30 text-[10px] px-2 py-1 rounded text-cyan-400">NODE_ACTIVE</span>
-            </div>
-            <div class="text-right text-[10px] opacity-40">
-                <p>SYSTEM_UPTIME: 100%</p>
-                <p>STORAGE_LOAD: {{ files|length }} FILES</p>
-            </div>
-        </header>
-
-        <nav class="flex gap-8 mb-8 text-xs font-bold tracking-widest">
-            <button onclick="showTab('links')" id="btn-links" class="tab-btn active pb-2 uppercase">Share_Links</button>
-            <button onclick="showTab('files')" id="btn-files" class="tab-btn pb-2 uppercase">File_Manager</button>
+<body class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 glass border-r border-white/5 flex flex-col">
+        <div class="p-8 border-b border-white/5">
+            <h1 class="text-2xl font-black italic tracking-tighter neon-glow">SLINK <span class="text-pink-500">//</span> OS</h1>
+            <p class="text-[9px] opacity-40 uppercase tracking-[4px] mt-1">Production_Node</p>
+        </div>
+        <nav class="flex-1 mt-6">
+            <button onclick="showSection('links')" id="nav-links" class="sidebar-item active w-full text-left px-8 py-4 text-xs font-bold uppercase tracking-widest flex items-center gap-3">
+                <span class="opacity-50">01</span> SHARED_LINKS
+            </button>
+            <button onclick="showSection('files')" id="nav-files" class="sidebar-item w-full text-left px-8 py-4 text-xs font-bold uppercase tracking-widest flex items-center gap-3">
+                <span class="opacity-50">02</span> FILE_MANAGER
+            </button>
+            <button onclick="showSection('settings')" id="nav-settings" class="sidebar-item w-full text-left px-8 py-4 text-xs font-bold uppercase tracking-widest flex items-center gap-3">
+                <span class="opacity-50">03</span> SYS_SETTINGS
+            </button>
         </nav>
+        <div class="p-6 border-t border-white/5 text-[9px] opacity-30 text-center uppercase tracking-widest">
+            NODE_STATE: <span class="text-green-500">OPTIMAL</span>
+        </div>
+    </aside>
 
-        <div id="tab-links" class="tab-content">
-            <div class="glass border border-cyan-900/50 rounded-lg overflow-hidden">
+    <!-- Main Content -->
+    <main class="flex-1 p-12 overflow-y-auto">
+        <!-- Links Section -->
+        <div id="section-links" class="section">
+            <h2 class="text-3xl font-bold mb-8 mono uppercase tracking-widest">Active_Share_Registry</h2>
+            <div class="glass rounded-xl overflow-hidden">
                 <table class="w-full text-left text-sm">
-                    <thead class="bg-black/40 text-[11px] uppercase opacity-60">
+                    <thead class="bg-white/5 text-[10px] uppercase font-bold opacity-50">
                         <tr>
-                            <th class="px-6 py-4">Token</th>
-                            <th>Filename</th>
-                            <th>Downloads</th>
-                            <th>Expiry</th>
-                            <th>Status</th>
-                            <th class="text-right px-6">Management</th>
+                            <th class="px-8 py-4">Hex_Token</th>
+                            <th>Asset_Identifier</th>
+                            <th>Transfer_Count</th>
+                            <th>Expiry_Date</th>
+                            <th class="text-right px-8">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="mono">
                         {% for s in shares %}
                         <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
-                            <td class="px-6 py-4 font-mono text-pink-500 font-bold">{{ s.token }}</td>
+                            <td class="px-8 py-5 text-pink-500 font-bold">{{ s.token }}</td>
                             <td class="max-w-xs truncate">{{ s.filename }}</td>
                             <td>{{ s.downloads }} / {{ s.max_downloads or '∞' }}</td>
-                            <td class="opacity-60">{{ s.expires|datetime if s.expires else 'NEVER' }}</td>
-                            <td><span class="status-dot {{ 'bg-green-500 shadow-[0_0_8px_#22c55e]' if s.enabled else 'bg-red-500' }}"></span></td>
-                            <td class="text-right px-6">
-                                <button onclick="req('toggle', '{{ s.token }}')" class="hover:text-white mr-4 text-[10px] border border-cyan-900 px-2 py-1">TOGGLE</button>
-                                <button onclick="req('delete', '{{ s.token }}')" class="hover:text-red-500 text-[10px] border border-red-900 px-2 py-1">WIPE_TOKEN</button>
+                            <td class="opacity-40">{{ s.expires|datetime if s.expires else 'PERMANENT' }}</td>
+                            <td class="text-right px-8">
+                                <button onclick="apiReq('toggle', {token:'{{ s.token }}'})" class="btn-action btn-cyan mr-2 uppercase">{{ 'Disable' if s.enabled else 'Enable' }}</button>
+                                <button onclick="apiReq('delete_token', {token:'{{ s.token }}'})" class="btn-action btn-pink uppercase">Revoke</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -63,28 +74,28 @@
             </div>
         </div>
 
-        <div id="tab-files" class="tab-content hidden">
-            <div class="glass border border-cyan-900/50 rounded-lg overflow-hidden">
+        <!-- File Manager Section -->
+        <div id="section-files" class="section hidden">
+            <h2 class="text-3xl font-bold mb-8 mono uppercase tracking-widest">Storage_Infrastructure</h2>
+            <div class="glass rounded-xl overflow-hidden">
                 <table class="w-full text-left text-sm">
-                    <thead class="bg-black/40 text-[11px] uppercase opacity-60">
+                    <thead class="bg-white/5 text-[10px] uppercase font-bold opacity-50">
                         <tr>
-                            <th class="px-6 py-4">Hash (Partial)</th>
-                            <th>Representative Name</th>
-                            <th>Size</th>
-                            <th>Created</th>
-                            <th class="text-right px-6">Actions</th>
+                            <th class="px-8 py-4">SHA-256_Hash</th>
+                            <th>Representative_Name</th>
+                            <th>Storage_Footprint</th>
+                            <th class="text-right px-8">Operations</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="mono text-xs">
                         {% for f in files %}
                         <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
-                            <td class="px-6 py-4 font-mono text-cyan-500">{{ f.hash[:12] }}...</td>
+                            <td class="px-8 py-5 text-cyan-500">{{ f.hash[:16] }}...</td>
                             <td class="max-w-xs truncate">{{ f.filename }}</td>
                             <td>{{ f.size|filesize }}</td>
-                            <td class="opacity-60">{{ f.created|datetime }}</td>
-                            <td class="text-right px-6">
-                                <a href="/api/file/dl/{{ secret }}/{{ f.hash }}" class="hover:text-white mr-4 text-[10px] border border-cyan-900 px-2 py-1">DOWNLOAD</a>
-                                <button onclick="reqFile('delete', '{{ f.hash }}')" class="hover:text-red-500 text-[10px] border border-red-900 px-2 py-1">DELETE_DATA</button>
+                            <td class="text-right px-8">
+                                <a href="/api/admin/dl/{{ secret }}/{{ f.hash }}" class="btn-action btn-cyan mr-2 uppercase inline-block">Extract</a>
+                                <button onclick="apiReq('delete_file', {hash:'{{ f.hash }}'})" class="btn-action btn-pink uppercase">Purge</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -92,26 +103,66 @@
                 </table>
             </div>
         </div>
-    </div>
+
+        <!-- Settings Section -->
+        <div id="section-settings" class="section hidden">
+            <h2 class="text-3xl font-bold mb-8 mono uppercase tracking-widest">Node_Configuration</h2>
+            <div class="max-w-2xl bg-black/30 border border-white/5 p-8 rounded-lg">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold opacity-40 mb-2">Admin_Username</label>
+                        <input type="text" id="set-username" value="{{ config.admin_username }}" class="w-full input-dark">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold opacity-40 mb-2">New_Password (Leave empty to keep)</label>
+                        <input type="password" id="set-password" placeholder="••••••••" class="w-full input-dark">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold opacity-40 mb-2">Secret_Admin_Path</label>
+                        <div class="flex gap-2">
+                            <span class="bg-white/5 p-2 text-sm opacity-50">/slink/</span>
+                            <input type="text" id="set-secret" value="{{ config.admin_secret }}" class="flex-1 input-dark">
+                        </div>
+                    </div>
+                    <button onclick="saveSettings()" class="w-full bg-cyan-500 text-black font-bold py-3 text-xs uppercase cursor-pointer hover:bg-white transition-all">Update_Core_Config</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
     <script>
         const secret = window.location.pathname.split('/')[2];
-        
-        async function req(type, token) {
-            await fetch(`/api/${type}/${secret}/${token}`, {method: 'POST'});
+
+        function showSection(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            document.getElementById('section-' + id).classList.remove('hidden');
+            document.getElementById('nav-' + id).classList.add('active');
+        }
+
+        async function apiReq(action, data) {
+            if(action.includes('delete') && !confirm('CONFIRM_DESTRUCTIVE_ACTION?')) return;
+            await fetch(`/api/admin/${secret}/${action}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
             location.reload();
         }
 
-        async function reqFile(type, fhash) {
-            if(type === 'delete' && !confirm('CAUTION: This will delete physical file and all share links. Continue?')) return;
-            await fetch(`/api/file/${type}/${secret}/${fhash}`, {method: 'POST'});
-            location.reload();
-        }
-
-        function showTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('tab-' + tab).classList.remove('hidden');
-            document.getElementById('btn-' + tab).classList.add('active');
+        async function saveSettings() {
+            const data = {
+                username: document.getElementById('set-username').value,
+                password: document.getElementById('set-password').value,
+                secret_path: document.getElementById('set-secret').value
+            };
+            const r = await fetch(`/api/admin/${secret}/update_settings`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const res = await r.json();
+            if(res.status === 'ok') window.location.href = res.new_url;
         }
     </script>
 </body>
