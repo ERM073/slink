@@ -2,6 +2,7 @@
 <html class="dark">
 <head>
     <title>SLINK // CORE_DASHBOARD</title>
+    <link rel="icon" type="image/png" href="/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Share+Tech+Mono&display=swap');
@@ -22,22 +23,22 @@
     <aside class="w-64 glass border-r border-white/5 flex flex-col">
         <div class="p-8 border-b border-white/5">
             <h1 class="text-2xl font-black italic tracking-tighter neon-glow">SLINK <span class="text-pink-500">//</span> OS</h1>
-            <p class="text-[9px] opacity-40 uppercase tracking-[4px] mt-1">Production_Node</p>
+            <p class="text-[9px] opacity-40 uppercase tracking-[4px] mt-1">プロダクション・ノード</p>
         </div>
         <nav class="flex-1 mt-6">
             <button onclick="showSection('links')" id="nav-links" class="sidebar-item active w-full text-left px-8 py-4 text-xs font-bold uppercase tracking-widest flex items-center gap-3">
-                <span class="opacity-50">01</span> SHARED_LINKS
+                <span class="opacity-50">01</span> 共有リンク
             </button>
             <button onclick="showSection('files')" id="nav-files" class="sidebar-item w-full text-left px-8 py-4 text-xs font-bold uppercase tracking-widest flex items-center gap-3">
-                <span class="opacity-50">02</span> FILE_MANAGER
+                <span class="opacity-50">02</span> ファイルマネージャー
             </button>
             <button onclick="showSection('settings')" id="nav-settings" class="sidebar-item w-full text-left px-8 py-4 text-xs font-bold uppercase tracking-widest flex items-center gap-3">
-                <span class="opacity-50">03</span> SYS_SETTINGS
+                <span class="opacity-50">03</span> システム設定
             </button>
         </nav>
         <div class="p-6">
             <input type="file" id="upload-input" class="hidden" onchange="handleUpload(this)">
-            <button onclick="document.getElementById('upload-input').click()" class="w-full bg-cyan-500 text-black py-2 font-bold text-[10px] tracking-widest hover:bg-white transition-all">UPLOAD_NEW_ASSET</button>
+            <button onclick="document.getElementById('upload-input').click()" class="w-full bg-cyan-500 text-black py-2 font-bold text-[10px] tracking-widest hover:bg-white transition-all uppercase">新しいファイルをアップロード</button>
         </div>
     </aside>
 
@@ -45,16 +46,16 @@
     <main class="flex-1 p-12 overflow-y-auto">
         <!-- Links Section -->
         <div id="section-links" class="section">
-            <h2 class="text-3xl font-bold mb-8 mono uppercase tracking-widest">Active_Share_Registry</h2>
+            <h2 class="text-3xl font-bold mb-8 mono uppercase tracking-widest">共有リンク一覧</h2>
             <div class="glass rounded-xl overflow-hidden">
                 <table class="w-full text-left text-sm">
                     <thead class="bg-white/5 text-[10px] uppercase font-bold opacity-50">
                         <tr>
-                            <th class="px-8 py-4">Hex_Token</th>
-                            <th>Asset_Identifier</th>
-                            <th>Transfer_Count</th>
-                            <th>Expiry_Date</th>
-                            <th class="text-right px-8">Actions</th>
+                            <th class="px-8 py-4">トークン</th>
+                            <th>ファイル名</th>
+                            <th>DL数</th>
+                            <th>期限</th>
+                            <th class="text-right px-8">アクション</th>
                         </tr>
                     </thead>
                     <tbody class="mono">
@@ -63,11 +64,11 @@
                             <td class="px-8 py-5 text-pink-500 font-bold">{{ s.token }}</td>
                             <td class="max-w-xs truncate">{{ s.filename }}</td>
                             <td>{{ s.downloads }} / {{ s.max_downloads or '∞' }}</td>
-                            <td class="opacity-40">{{ s.expires|datetime if s.expires else 'PERMANENT' }}</td>
+                            <td class="opacity-40">{{ s.expires|datetime if s.expires else '無期限' }}</td>
                             <td class="text-right px-8 space-x-2">
-                                <button onclick="copyToClipboard('http://' + window.location.hostname + ':5119/share/{{ s.hash }}/{{ s.token }}')" class="btn-action border-white/20 text-white/40 hover:text-white uppercase">Copy_URL</button>
-                                <button onclick="apiReq('toggle', {token:'{{ s.token }}'})" class="btn-action btn-cyan uppercase">{{ 'Disable' if s.enabled else 'Enable' }}</button>
-                                <button onclick="apiReq('delete_token', {token:'{{ s.token }}'})" class="btn-action btn-pink uppercase">Revoke</button>
+                                <button onclick="copyToClipboard('http://' + window.location.hostname + ':5119/share/{{ s.hash }}/{{ s.token }}')" class="btn-action border-white/20 text-white/40 hover:text-white uppercase">URLをコピー</button>
+                                <button onclick="apiReq('toggle', {token:'{{ s.token }}'})" class="btn-action btn-cyan uppercase">{{ '無効化' if s.enabled else '有効化' }}</button>
+                                <button onclick="apiReq('delete_token', {token:'{{ s.token }}'})" class="btn-action btn-pink uppercase">削除</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -78,20 +79,20 @@
 
         <!-- File Manager Section -->
         <div id="section-files" class="section hidden">
-            <h2 class="text-3xl font-bold mb-8 mono uppercase tracking-widest">Storage_Infrastructure</h2>
+            <h2 class="text-3xl font-bold mb-8 mono uppercase tracking-widest">ストレージインフラストラクチャ</h2>
             <div class="glass rounded-xl overflow-hidden">
                 <table class="w-full text-left text-sm">
                     <thead class="bg-white/5 text-[10px] uppercase font-bold opacity-50">
                         <tr>
-                            <th class="px-8 py-4">SHA-256_Hash_Node</th>
-                            <th>Representative_Name</th>
-                            <th>Storage_Footprint</th>
-                            <th class="text-right px-8">Operations</th>
+                            <th class="px-8 py-4">SHA-256_ハッシュ</th>
+                            <th>ファイル名</th>
+                            <th>サイズ</th>
+                            <th class="text-right px-8">操作</th>
                         </tr>
                     </thead>
                     <tbody class="mono text-xs">
                         {% if not files %}
-                        <tr><td colspan="4" class="px-8 py-12 text-center opacity-30 italic">NO_DATA_NODES_FOUND</td></tr>
+                        <tr><td colspan="4" class="px-8 py-12 text-center opacity-30 italic">データノードが見つかりません</td></tr>
                         {% endif %}
                         {% for f in files %}
                         <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
@@ -99,9 +100,9 @@
                             <td class="max-w-xs truncate">{{ f.filename }}</td>
                             <td>{{ f.size|filesize }}</td>
                             <td class="text-right px-8">
-                                <button onclick="apiReq('share_existing', {hash:'{{ f.hash }}'})" class="btn-action border-white/20 text-white hover:border-cyan-500 mr-2 uppercase">Create_Link</button>
-                                <a href="/api/admin/dl/{{ secret }}/{{ f.hash }}" class="btn-action btn-cyan mr-2 uppercase inline-block">Extract</a>
-                                <button onclick="apiReq('delete_file', {hash:'{{ f.hash }}'})" class="btn-action btn-pink uppercase">Purge</button>
+                                <button onclick="apiReq('share_existing', {hash:'{{ f.hash }}'})" class="btn-action border-white/20 text-white hover:border-cyan-500 mr-2 uppercase">リンク作成</button>
+                                <a href="/api/admin/dl/{{ secret }}/{{ f.hash }}" class="btn-action btn-cyan mr-2 uppercase inline-block">ダウンロード</a>
+                                <button onclick="apiReq('delete_file', {hash:'{{ f.hash }}'})" class="btn-action btn-pink uppercase">破棄</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -112,26 +113,25 @@
 
         <!-- Settings Section -->
         <div id="section-settings" class="section hidden">
-            <h2 class="text-3xl font-bold mb-8 mono uppercase tracking-widest">Node_Configuration</h2>
+            <h2 class="text-3xl font-bold mb-8 mono uppercase tracking-widest">システム設定</h2>
             <div class="max-w-2xl bg-black/30 border border-white/5 p-8 rounded-lg">
                 <div class="space-y-6">
                     <div>
-                        <label class="block text-[10px] uppercase font-bold opacity-40 mb-2">Admin_Username</label>
+                        <label class="block text-[10px] uppercase font-bold opacity-40 mb-2">管理者ユーザー名</label>
                         <input type="text" id="set-username" value="{{ config.admin_username }}" class="w-full input-dark">
                     </div>
                     <div>
-                        <label class="block text-[10px] uppercase font-bold opacity-40 mb-2">New_Password (Leave empty to keep)</label>
+                        <label class="block text-[10px] uppercase font-bold opacity-40 mb-2">新しいパスワード (空欄で維持)</label>
                         <input type="password" id="set-password" placeholder="••••••••" class="w-full input-dark">
                     </div>
                     <div>
-                        <label class="block text-[10px] uppercase font-bold opacity-40 mb-2">Secret_Admin_Path</label>
+                        <label class="block text-[10px] uppercase font-bold opacity-40 mb-2">秘密の管理用URLパス</label>
                         <div class="flex gap-2">
                             <span class="bg-white/5 p-2 text-sm opacity-50">/slink/</span>
                             <input type="text" id="set-secret" value="{{ config.admin_secret }}" class="flex-1 input-dark">
                         </div>
                     </div>
-                    <button onclick="saveSettings()" class="w-full bg-cyan-500 text-black font-bold py-3 text-xs uppercase cursor-pointer hover:bg-white transition-all">Update_Core_Config</button>
-                    <p class="text-[9px] opacity-40 mt-4">CAUTION: CHANGING THE SECRET PATH WILL REQUIRE RE-LOGIN AT THE NEW URL.</p>
+                    <button onclick="saveSettings()" class="w-full bg-cyan-500 text-black font-bold py-3 text-xs uppercase cursor-pointer hover:bg-white transition-all">設定を更新</button>
                 </div>
             </div>
         </div>
@@ -139,24 +139,21 @@
 
     <script>
         const secret = window.location.pathname.split('/')[2];
-
         function showSection(id) {
             document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
             document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
             document.getElementById('section-' + id).classList.remove('hidden');
             document.getElementById('nav-' + id).classList.add('active');
         }
-
         async function apiReq(action, data) {
-            if(action.includes('delete') && !confirm('CONFIRM_DESTRUCTIVE_ACTION?')) return;
-            const r = await fetch(`/api/admin/${secret}/${action}`, {
+            if(action.includes('delete') && !confirm('実行してもよろしいですか？（この操作は取り消せません）')) return;
+            await fetch(`/api/admin/${secret}/${action}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
             });
             location.reload();
         }
-
         async function handleUpload(input) {
             if(!input.files[0]) return;
             const formData = new FormData();
@@ -164,7 +161,6 @@
             await fetch(`/api/admin/upload/${secret}`, {method: 'POST', body: formData});
             location.reload();
         }
-
         async function saveSettings() {
             const data = {
                 username: document.getElementById('set-username').value,
@@ -179,9 +175,8 @@
             const res = await r.json();
             if(res.status === 'ok') window.location.href = res.new_url;
         }
-
         function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+            navigator.clipboard.writeText(text).then(() => alert('コピーしました'));
         }
     </script>
 </body>

@@ -21,7 +21,10 @@ DATA_DIR = os.path.join(BASE_DIR, 'data')
 SHARES_FILE = os.path.join(DATA_DIR, 'shares.json')
 CONFIG_FILE = os.path.join(DATA_DIR, 'config.json')
 
-for d in [STORAGE_DIR, DATA_DIR]: os.makedirs(d, exist_ok=True)
+# Ensure directories exist immediately
+for d in [STORAGE_DIR, DATA_DIR]:
+    if not os.path.exists(d):
+        os.makedirs(d, exist_ok=True)
 
 def load_json(path, default=[]):
     if os.path.exists(path):
@@ -35,9 +38,9 @@ def save_json(path, data):
 share_app = Flask(__name__, template_folder='templates', static_folder='static')
 admin_app = Flask(__name__, template_folder='templates', static_folder='static')
 
-# Authentication & Rate Limiting
-login_attempts = {} # {ip: [count, timestamp]}
-blocked_ips = {}    # {ip: timestamp}
+# Authentication
+login_attempts = {}
+blocked_ips = {}
 
 def check_admin_auth(f):
     @wraps(f)
@@ -58,6 +61,11 @@ def is_ip_blocked(ip):
 
 # ----- PUBLIC (SHARE) APP ROUTES -----
 
+@share_app.route('/favicon.ico')
+@admin_app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(share_app.root_path, 'static'), 'favicon.png', mimetype='image/png')
+
 @share_app.route('/share/<fhash>/<token>')
 def download_page(fhash, token):
     shares = load_json(SHARES_FILE)
@@ -66,13 +74,11 @@ def download_page(fhash, token):
     if share.get('max_downloads') and share['downloads'] >= share['max_downloads']: abort(404)
     if share.get('expires') and time.time() > share['expires']: abort(404)
     
-    # IP check
     if share.get('ip_limit'):
         try:
             if request.remote_addr not in ipaddress.ip_network(share['ip_limit']): abort(403)
         except: pass
 
-    # Preview logic
     preview = None
     is_img = False
     ext = os.path.splitext(share['filename'])[1].lower()
@@ -90,7 +96,6 @@ def download_file(fhash, token):
     shares = load_json(SHARES_FILE)
     share = next((s for s in shares if s['hash'] == fhash and s['token'] == token), None)
     if not share or not share['enabled']: abort(404)
-    
     safe_hash = os.path.basename(fhash)
     share['downloads'] += 1
     save_json(SHARES_FILE, shares)
@@ -144,6 +149,7 @@ def admin_login(secret):
 def admin_dashboard(secret):
     shares = load_json(SHARES_FILE)
     files = []
+    # Force list current directory to debug
     if os.path.exists(STORAGE_DIR):
         for fhash in os.listdir(STORAGE_DIR):
             fpath = os.path.join(STORAGE_DIR, fhash)
@@ -201,7 +207,6 @@ def admin_upload(secret):
     content = file.read()
     fhash = hashlib.sha256(content).hexdigest()
     with open(os.path.join(STORAGE_DIR, fhash), 'wb') as f: f.write(content)
-    # Also create a default share link for it
     token = secrets.token_hex(4)
     shares = load_json(SHARES_FILE)
     shares.append({"hash": fhash, "token": token, "filename": secure_filename(file.filename), "downloads": 0, "max_downloads": 0, "expires": None, "enabled": True})
@@ -236,5 +241,6 @@ def run_cli():
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] != 'serve': run_cli()
     else:
+        print(f"// NODE_BOOT: STORAGE_ROOT={STORAGE_DIR}")
         threading.Thread(target=run_share, daemon=True).start()
         run_admin()
