@@ -4,9 +4,14 @@ echo "------------------------------------"
 echo " SLINK_INSTALLER: INITIATING..."
 echo "------------------------------------"
 
-# Check Python
-if ! command -v python3 & { echo "ERROR: Python3 not found."; exit 1; }; then
-    : # python3 exists
+# Robust Python Check
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
+    echo "ERROR: Python not found. Please install Python 3.10+."
+    exit 1
 fi
 
 # Setup directories
@@ -15,7 +20,7 @@ mkdir -p storage data templates static
 
 # Virtual Environment Setup
 echo "[+] SETTING_UP_VENV..."
-python3 -m venv .venv || { echo "ERROR: python3-venv missing. apt install python3-venv"; exit 1; }
+$PYTHON_CMD -m venv .venv || { echo "ERROR: python3-venv missing. apt install python3-venv"; exit 1; }
 source .venv/bin/activate
 
 # Install basic dependencies
@@ -26,7 +31,7 @@ pip install flask werkzeug requests pyqrcode pypng --quiet
 USER="admin"
 PASS=$(openssl rand -base64 12)
 SECRET=$(openssl rand -hex 4)
-HAHSED_PASS=$(python3 -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('$PASS'))")
+HAHSED_PASS=$($PYTHON_CMD -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('$PASS'))")
 
 # Create initial config
 cat <<EOF > data/config.json
@@ -81,3 +86,4 @@ echo " COMMAND: slink <file>"
 echo " USERNAME: $USER"
 echo " PASSWORD: $PASS"
 echo "===================================="
+echo "Logs are being written to slink.log"

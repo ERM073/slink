@@ -117,7 +117,21 @@ def admin_portal(secret):
 @check_auth
 def dashboard(secret):
     shares = load_json(SHARES_FILE)
-    return render_template('dashboard.html', shares=shares, secret=secret)
+    # File Manager logic
+    files = []
+    for fhash in os.listdir(STORAGE_DIR):
+        fpath = os.path.join(STORAGE_DIR, fhash)
+        if os.path.isfile(fpath):
+            # Find a representative filename from shares if it exists
+            filename = next((s['filename'] for s in shares if s['hash'] == fhash), fhash)
+            stats = os.stat(fpath)
+            files.append({
+                "hash": fhash,
+                "filename": filename,
+                "size": stats.st_size,
+                "created": stats.st_ctime
+            })
+    return render_template('dashboard.html', shares=shares, files=files, secret=secret)
 
 @app.route('/api/toggle/<secret>/<token>', methods=['POST'])
 @check_auth
@@ -137,6 +151,27 @@ def delete_share(secret, token):
     shares = [s for s in shares if s['token'] != token]
     save_json(SHARES_FILE, shares)
     return jsonify({"status": "ok"})
+
+@app.route('/api/file/delete/<secret>/<fhash>', methods=['POST'])
+@check_auth
+def delete_file(secret, fhash):
+    # Delete the physical file
+    fpath = os.path.join(STORAGE_DIR, os.path.basename(fhash))
+    if os.path.exists(fpath):
+        os.remove(fpath)
+    # Delete all associated tokens
+    shares = load_json(SHARES_FILE)
+    shares = [s for s in shares if s['hash'] != fhash]
+    save_json(SHARES_FILE, shares)
+    return jsonify({"status": "ok"})
+
+@app.route('/api/file/dl/<secret>/<fhash>')
+@check_auth
+def admin_download_file(secret, fhash):
+    safe_hash = os.path.basename(fhash)
+    shares = load_json(SHARES_FILE)
+    filename = next((s['filename'] for s in shares if s['hash'] == fhash), safe_hash)
+    return send_from_directory(STORAGE_DIR, safe_hash, as_attachment=True, download_name=filename)
 
 @app.route('/api/upload', methods=['POST'])
 def upload():
@@ -163,6 +198,14 @@ def upload():
 @app.template_filter('datetime')
 def format_datetime(value):
     return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M')
+
+@app.template_filter('filesize')
+def format_filesize(size):
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} TB"
 
 def cli():
     p = argparse.ArgumentParser()

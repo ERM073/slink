@@ -9,6 +9,8 @@
         .glass { background: rgba(10, 10, 20, 0.6); backdrop-filter: blur(8px); }
         .neon-text { text-shadow: 0 0 10px #00f2ff; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .tab-btn { border-bottom: 2px solid transparent; }
+        .tab-btn.active { border-bottom: 2px solid #00f2ff; color: #fff; }
     </style>
 </head>
 <body class="p-8">
@@ -20,45 +22,96 @@
             </div>
             <div class="text-right text-[10px] opacity-40">
                 <p>SYSTEM_UPTIME: 100%</p>
-                <p>STORAGE_LOAD: OPTIMAL</p>
+                <p>STORAGE_LOAD: {{ files|length }} FILES</p>
             </div>
         </header>
 
-        <div class="glass border border-cyan-900/50 rounded-lg overflow-hidden">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-black/40 text-[11px] uppercase opacity-60">
-                    <tr>
-                        <th class="px-6 py-4">Token</th>
-                        <th>Filename</th>
-                        <th>Downloads</th>
-                        <th>Expiry</th>
-                        <th>Status</th>
-                        <th class="text-right px-6">Management</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in shares %}
-                    <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
-                        <td class="px-6 py-4 font-mono text-pink-500 font-bold">{{ s.token }}</td>
-                        <td>{{ s.filename }}</td>
-                        <td>{{ s.downloads }} / {{ s.max_downloads or '∞' }}</td>
-                        <td class="opacity-60">{{ s.expires|datetime if s.expires else 'NEVER' }}</td>
-                        <td><span class="status-dot {{ 'bg-green-500 shadow-[0_0_8px_#22c55e]' if s.enabled else 'bg-red-500' }}"></span></td>
-                        <td class="text-right px-6">
-                            <button onclick="req('toggle', '{{ s.token }}')" class="hover:text-white mr-4 text-[10px] border border-cyan-900 px-2 py-1">TOGGLE</button>
-                            <button onclick="req('delete', '{{ s.token }}')" class="hover:text-red-500 text-[10px] border border-red-900 px-2 py-1">WIPE</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <nav class="flex gap-8 mb-8 text-xs font-bold tracking-widest">
+            <button onclick="showTab('links')" id="btn-links" class="tab-btn active pb-2 uppercase">Share_Links</button>
+            <button onclick="showTab('files')" id="btn-files" class="tab-btn pb-2 uppercase">File_Manager</button>
+        </nav>
+
+        <div id="tab-links" class="tab-content">
+            <div class="glass border border-cyan-900/50 rounded-lg overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-black/40 text-[11px] uppercase opacity-60">
+                        <tr>
+                            <th class="px-6 py-4">Token</th>
+                            <th>Filename</th>
+                            <th>Downloads</th>
+                            <th>Expiry</th>
+                            <th>Status</th>
+                            <th class="text-right px-6">Management</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in shares %}
+                        <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
+                            <td class="px-6 py-4 font-mono text-pink-500 font-bold">{{ s.token }}</td>
+                            <td class="max-w-xs truncate">{{ s.filename }}</td>
+                            <td>{{ s.downloads }} / {{ s.max_downloads or '∞' }}</td>
+                            <td class="opacity-60">{{ s.expires|datetime if s.expires else 'NEVER' }}</td>
+                            <td><span class="status-dot {{ 'bg-green-500 shadow-[0_0_8px_#22c55e]' if s.enabled else 'bg-red-500' }}"></span></td>
+                            <td class="text-right px-6">
+                                <button onclick="req('toggle', '{{ s.token }}')" class="hover:text-white mr-4 text-[10px] border border-cyan-900 px-2 py-1">TOGGLE</button>
+                                <button onclick="req('delete', '{{ s.token }}')" class="hover:text-red-500 text-[10px] border border-red-900 px-2 py-1">WIPE_TOKEN</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-files" class="tab-content hidden">
+            <div class="glass border border-cyan-900/50 rounded-lg overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-black/40 text-[11px] uppercase opacity-60">
+                        <tr>
+                            <th class="px-6 py-4">Hash (Partial)</th>
+                            <th>Representative Name</th>
+                            <th>Size</th>
+                            <th>Created</th>
+                            <th class="text-right px-6">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in files %}
+                        <tr class="border-b border-white/5 hover:bg-white/5 transition-all">
+                            <td class="px-6 py-4 font-mono text-cyan-500">{{ f.hash[:12] }}...</td>
+                            <td class="max-w-xs truncate">{{ f.filename }}</td>
+                            <td>{{ f.size|filesize }}</td>
+                            <td class="opacity-60">{{ f.created|datetime }}</td>
+                            <td class="text-right px-6">
+                                <a href="/api/file/dl/{{ secret }}/{{ f.hash }}" class="hover:text-white mr-4 text-[10px] border border-cyan-900 px-2 py-1">DOWNLOAD</a>
+                                <button onclick="reqFile('delete', '{{ f.hash }}')" class="hover:text-red-500 text-[10px] border border-red-900 px-2 py-1">DELETE_DATA</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     <script>
+        const secret = window.location.pathname.split('/')[2];
+        
         async function req(type, token) {
-            const secret = window.location.pathname.split('/')[2];
             await fetch(`/api/${type}/${secret}/${token}`, {method: 'POST'});
             location.reload();
+        }
+
+        async function reqFile(type, fhash) {
+            if(type === 'delete' && !confirm('CAUTION: This will delete physical file and all share links. Continue?')) return;
+            await fetch(`/api/file/${type}/${secret}/${fhash}`, {method: 'POST'});
+            location.reload();
+        }
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+            document.getElementById('btn-' + tab).classList.add('active');
         }
     </script>
 </body>
