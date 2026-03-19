@@ -7,6 +7,7 @@ import secrets
 import argparse
 import ipaddress
 import threading
+import requests
 from datetime import datetime
 from functools import wraps
 from flask import Flask, request, send_from_directory, render_template, abort, jsonify, make_response, redirect, url_for
@@ -183,7 +184,7 @@ def admin_api(secret, action):
         new_secret = request.json.get('secret_path')
         if new_user: config['admin_username'] = new_user
         if new_pass: config['admin_password'] = generate_password_hash(new_pass)
-        if new_secret and len(new_secret) >= 4: config['admin_secret'] = secure_filename(new_secret)
+        if new_secret and len(new_secret) >= 4: config['admin_secret'] = "".join([c for c in new_secret if c.isalnum()])
         save_json(CONFIG_FILE, config)
         return jsonify({"status": "ok", "new_url": f"/slink/{config['admin_secret']}/dashboard"})
     
@@ -210,10 +211,41 @@ def format_fs(s):
 def run_share(): share_app.run(port=5119, host='0.0.0.0', debug=False)
 def run_admin(): admin_app.run(port=5120, host='0.0.0.0', debug=False)
 
+def run_cli():
+    parser = argparse.ArgumentParser(description='SLINK CLI')
+    parser.add_argument('file', help='Path to file to upload')
+    parser.add_argument('--max', type=int, default=0, help='Max downloads')
+    parser.add_argument('--days', type=int, default=0, help='Expiration in days')
+    parser.add_argument('--password', help='Share password')
+    parser.add_argument('--ip', help='IP restriction')
+    parser.add_argument('--qr', action='store_true', help='Show ASCII QR code')
+    args = parser.parse_args()
+
+    if not os.path.exists(args.file):
+        print(f"ERROR: File '{args.file}' not found.")
+        sys.exit(1)
+
+    print(f"[+] UPLOADING: {args.file}...")
+    try:
+        data = {'max': args.max, 'days': args.days, 'password': args.password or '', 'ip': args.ip or ''}
+        with open(args.file, 'rb') as f:
+            r = requests.post('http://localhost:5119/api/upload', files={'file': f}, data=data)
+        
+        res = r.json()
+        print(f"------------------------------------")
+        print(f" SUCCESS: {res['url']}")
+        print(f"------------------------------------")
+        
+        if args.qr:
+            import pyqrcode
+            qr = pyqrcode.create(res['url'])
+            print(qr.terminal(quiet_zone=1))
+    except Exception as e:
+        print(f"ERROR: Could not connect to slink server.\n{e}")
+
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] != 'serve':
-        # Simple CLI Placeholder
-        print("Slink CLI - Not in server mode")
+        run_cli()
     else:
         print("// SLINK NODE BOOTING...")
         print("SHARE SERVER: http://0.0.0.0:5119")
