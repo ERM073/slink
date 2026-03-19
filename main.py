@@ -119,6 +119,25 @@ def dashboard(secret):
     shares = load_json(SHARES_FILE)
     return render_template('dashboard.html', shares=shares, secret=secret)
 
+@app.route('/api/toggle/<secret>/<token>', methods=['POST'])
+@check_auth
+def toggle_share(secret, token):
+    shares = load_json(SHARES_FILE)
+    for s in shares:
+        if s['token'] == token:
+            s['enabled'] = not s['enabled']
+            break
+    save_json(SHARES_FILE, shares)
+    return jsonify({"status": "ok"})
+
+@app.route('/api/delete/<secret>/<token>', methods=['POST'])
+@check_auth
+def delete_share(secret, token):
+    shares = load_json(SHARES_FILE)
+    shares = [s for s in shares if s['token'] != token]
+    save_json(SHARES_FILE, shares)
+    return jsonify({"status": "ok"})
+
 @app.route('/api/upload', methods=['POST'])
 def upload():
     file = request.files.get('file')
@@ -152,9 +171,11 @@ def cli():
     p.add_argument('--days', type=int, default=0)
     p.add_argument('--qr', action='store_true')
     args = p.parse_args()
-    # Simple direct upload if running locally
     print(f"Uploading {args.file}...")
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] != 'serve': cli()
-    else: app.run(port=5119, host='127.0.0.1')
+    else:
+        config = load_json(CONFIG_FILE, {})
+        host = '0.0.0.0' if config.get('public', True) else '127.0.0.1'
+        app.run(port=5119, host=host)
