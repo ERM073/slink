@@ -25,7 +25,6 @@ pip install flask werkzeug requests --quiet
 # Generate Credentials
 USER="admin"
 PASS=$(openssl rand -base64 12)
-SECRET=$(openssl rand -hex(4)) # Wait, hex(4) is wrong in bash
 SECRET=$(openssl rand -hex 4)
 HAHSED_PASS=$(python3 -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('$PASS'))")
 
